@@ -40,6 +40,23 @@ def load_design_library():
 
 design_library = load_design_library()
 
+# Default root route
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "message": "Welcome to Partner In Design chatbot!",
+        "endpoints": {
+            "/chat/uiux": "Post your UI/UX-related queries.",
+            "/chat/preferences": "Set chatbot preferences.",
+            "/chat/clear": "Clear conversation history.",
+            "/design/components": "Get interactive UI components.",
+            "/design/tutorials": "Access design tutorials.",
+            "/design/accessibility": "Get accessibility guidelines.",
+            "/design/analytics": "Fetch analytics insights.",
+            "/chat/info": "Get information about this chatbot."
+        }
+    })
+
 # Chat endpoint for general UI/UX queries
 @app.route("/chat/uiux", methods=["POST"])
 def uiux_chat():
