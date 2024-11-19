@@ -3,24 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot</title>
-    <script>
-        async function sendMessage() {
-            const message = document.getElementById("message").value;
-            const response = await fetch("https://chatbot-djdb.onrender.com/chat/standard", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message }),
-            });
-            const data = await response.json();
-            document.getElementById("response").innerText = data.response;
+    <title>Partner In Design Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
         }
-    </script>
+        .chat-container {
+            max-width: 700px;
+            margin: 50px auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+        }
+        .chat-header {
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .chat-box {
+            height: 500px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+        .message-container {
+            display: flex;
+            align-items: flex-start;
+            margin: 10px 0;
+        }
+        .message.user {
+            justify-content: flex-end;
+        }
+        .message.bot {
+            justify-content: flex-start;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin: 0 10px;
+            background-color: #ddd;
+        }
+        .avatar.user {
+            background-image: url('https://via.placeholder.com/40/007BFF/ffffff?text=U'); /* Placeholder user icon */
+        }
+        .avatar.bot {
+            background-image: url('https://via.placeholder.com/40/333333/ffffff?text=B'); /* Placeholder bot icon */
+        }
+        .message-text {
+            max-width: 70%;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #007BFF;
+            color: white;
+            word-wrap: break-word;
+        }
+        .message-text.bot {
+            background-color: #333333;
+        }
+        .input-container {
+            display: flex;
+        }
+        .input-container input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .input-container button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .input-container button:hover {
+            background-color: #0056b3;
+        }
+        .loading {
+            font-style: italic;
+            color: gray;
+        }
+    </style>
 </head>
 <body>
-    <h1>Chat with the Bot</h1>
-    <input type="text" id="message" placeholder="Type your message here">
-    <button onclick="sendMessage()">Send</button>
-    <p><strong>Response:</strong> <span id="response"></span></p>
+    <div class="chat-container">
+        <div class="chat-header">Partner In Design Chatbot</div>
+        <div class="chat-box" id="chat-box"></div>
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Type your message here..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const apiUrl = "https://chatbot-djdb.onrender.com/chat/uiux";
+
+        function addMessage(role, content, isLoading = false) {
+            const chatBox = document.getElementById("chat-box");
+            const messageContainer = document.createElement("div");
+            messageContainer.className = `message-container ${role}`;
+
+            const avatar = document.createElement("div");
+            avatar.className = `avatar ${role}`;
+            messageContainer.appendChild(avatar);
+
+            const messageText = document.createElement("div");
+            messageText.className = `message-text ${role}`;
+            if (isLoading) {
+                messageText.classList.add("loading");
+                messageText.innerText = "Typing...";
+            } else {
+                messageText.innerText = content;
+            }
+            messageContainer.appendChild(messageText);
+
+            chatBox.appendChild(messageContainer);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            return messageText;
+        }
+
+        async function sendMessage() {
+            const userInput = document.getElementById("user-input");
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Add user's message to the chat
+            addMessage("user", message);
+
+            // Clear the input field
+            userInput.value = "";
+
+            // Add a loading indicator for the bot
+            const loadingMessage = addMessage("bot", "", true);
+
+            try {
+                // Send the message to the chatbot API
+                const response = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+                loadingMessage.innerText = data.response || `Error: ${data.error}`;
+                loadingMessage.classList.remove("loading");
+            } catch (error) {
+                loadingMessage.innerText = "Error connecting to the chatbot. Please try again later.";
+                loadingMessage.classList.remove("loading");
+            }
+        }
+    </script>
 </body>
 </html>
