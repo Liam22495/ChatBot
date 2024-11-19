@@ -91,7 +91,7 @@ def uiux_chat():
 
         # Call the OpenAI API to generate a response
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-4o",
             messages=[{"role": "system", "content": system_message}] + conversation_history
         )
 
