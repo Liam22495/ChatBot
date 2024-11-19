@@ -16,6 +16,8 @@ model_name = "meta-llama/Llama-2-13b-hf"  # Use "meta-llama/Llama-2-7b-hf" for t
 tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=True)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
+logging.info(f"Using device: {device}")
+
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype="auto",
@@ -66,14 +68,17 @@ def load_design_library():
 
 design_library = load_design_library()
 
-# Default route to serve the frontend
-@app.route("/", methods=["GET"])
-def home():
-    return render_template("index.html")
+# Truncate input to avoid exceeding model limits
+def truncate_input(prompt, max_length=1024):
+    tokens = tokenizer(prompt, return_tensors="pt")["input_ids"]
+    if tokens.size(1) > max_length:
+        return tokenizer.decode(tokens[0, -max_length:], skip_special_tokens=True)
+    return prompt
 
 # Generate response using Llama 2
 def generate_response(prompt):
     try:
+        prompt = truncate_input(prompt)
         inputs = tokenizer(prompt, return_tensors="pt").to(device)
         outputs = model.generate(inputs["input_ids"], max_length=150, do_sample=True, temperature=0.7)
         return tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -81,6 +86,11 @@ def generate_response(prompt):
         return "Error: The model ran out of GPU memory. Try reducing the input size or using a smaller model."
     except Exception as e:
         return f"Error generating response: {str(e)}"
+
+# Default route to serve the frontend
+@app.route("/", methods=["GET"])
+def home():
+    return render_template("index.html")
 
 # Chat endpoint for general UI/UX queries
 @app.route("/chat/uiux", methods=["POST"])
