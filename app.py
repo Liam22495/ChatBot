@@ -1,22 +1,31 @@
-from dotenv import load_dotenv
-import os
 from flask import Flask, request, jsonify, render_template
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
 import json
-
-# Load environment variables from the .env file
-load_dotenv()
+import logging
 
 # Initialize Flask app
 app = Flask(__name__, template_folder="templates")
 
-# Check for OpenAI API key in environment variables
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Error: OPENAI_API_KEY environment variable is not set.")
-else:
-    print("OpenAI API key successfully loaded.")
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
-# Example global settings
+# Load Llama 2 model and tokenizer
+logging.info("Loading Llama 2 model...")
+model_name = "meta-llama/Llama-2-13b-hf"  # Use "meta-llama/Llama-2-7b-hf" for the smaller model
+tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=True)
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype="auto",
+    device_map="auto",
+    offload_folder="./offload"  # Offload layers to CPU if needed
+)
+
+logging.info("Llama 2 model loaded successfully!")
+
+# Global variables
 user_preferences = {
     "tone": "friendly",
     "detail": "concise",
@@ -29,7 +38,7 @@ conversation_history = [
     )}
 ]
 
-# Placeholder for external resources
+# Load external resources (design library, tutorials, etc.)
 def load_design_library():
     try:
         with open("design_library/components.json") as f:
@@ -47,7 +56,7 @@ def load_design_library():
             "analytics": analytics,
         }
     except Exception as e:
-        print(f"Error loading design library: {e}")
+        logging.error(f"Error loading design library: {e}")
         return {
             "components": [],
             "tutorials": [],
@@ -62,45 +71,46 @@ design_library = load_design_library()
 def home():
     return render_template("index.html")
 
-# Chat endpoint
+# Generate response using Llama 2
+def generate_response(prompt):
+    try:
+        inputs = tokenizer(prompt, return_tensors="pt").to(device)
+        outputs = model.generate(inputs["input_ids"], max_length=150, do_sample=True, temperature=0.7)
+        return tokenizer.decode(outputs[0], skip_special_tokens=True)
+    except torch.cuda.OutOfMemoryError:
+        return "Error: The model ran out of GPU memory. Try reducing the input size or using a smaller model."
+    except Exception as e:
+        return f"Error generating response: {str(e)}"
+
+# Chat endpoint for general UI/UX queries
 @app.route("/chat/uiux", methods=["POST"])
 def uiux_chat():
     global conversation_history
 
     try:
         user_message = request.json.get("message", "").strip()
-        tone = user_preferences.get("tone", "friendly")
-        detail = user_preferences.get("detail", "concise")
-
         if not user_message:
             return jsonify({"error": "Message cannot be empty"}), 400
 
-        # Add the user's message to the conversation history
+        tone = user_preferences.get("tone", "friendly")
+        detail = user_preferences.get("detail", "concise")
+
+        # Add user message to history
         conversation_history.append({"role": "user", "content": user_message})
 
-        # Customize system message
+        # Format system message and prompt
         system_message = (
             "You are an expert UI/UX assistant. "
             f"Respond with a {tone} tone and {detail} level of detail. "
             "Provide actionable advice and include relevant examples where necessary."
         )
+        prompt = f"{system_message}\n" + "\n".join([f"{h['role']}: {h['content']}" for h in conversation_history]) + "\nAssistant:"
 
-        # Generate response from model (adjust for OpenAI API or local model)
-        try:
-            import openai
-            openai.api_key = api_key
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",  # Use appropriate model
-                messages=[{"role": "system", "content": system_message}] + conversation_history
-            )
-            chatbot_response = response['choices'][0]['message']['content'].strip()
-        except ImportError:
-            chatbot_response = "Error: OpenAI module not available. Please configure your environment correctly."
+        # Generate chatbot response
+        chatbot_response = generate_response(prompt).strip()
 
-        # Append response to history
+        # Add chatbot response to history
         conversation_history.append({"role": "assistant", "content": chatbot_response})
-
-        # Limit history
         if len(conversation_history) > 20:
             conversation_history = conversation_history[-20:]
 
@@ -109,7 +119,7 @@ def uiux_chat():
     except Exception as e:
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
-# Preferences endpoint
+# Endpoint for setting user preferences
 @app.route("/chat/preferences", methods=["POST"])
 def set_preferences():
     global user_preferences
@@ -132,6 +142,15 @@ def clear_conversation():
         )}
     ]
     return jsonify({"message": "Conversation history cleared."})
+
+# Test endpoint for model
+@app.route("/chat/test", methods=["GET"])
+def test_chat():
+    try:
+        test_response = generate_response("Test message: What are the best practices in UI/UX design?")
+        return jsonify({"response": test_response})
+    except Exception as e:
+        return jsonify({"error": f"Test failed: {str(e)}"}), 500
 
 # Resource endpoints
 @app.route("/design/components", methods=["GET"])
