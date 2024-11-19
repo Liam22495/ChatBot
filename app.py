@@ -2,8 +2,8 @@ from dotenv import load_dotenv
 import os
 import openai
 from flask import Flask, request, jsonify, render_template
-import time
 import json
+import time
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -11,6 +11,7 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__, template_folder="templates")
 
+# Set the OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Global variables
@@ -51,6 +52,7 @@ def uiux_chat():
     global conversation_history
 
     try:
+        # Get the user's message from the request
         user_message = request.json.get("message", "").strip()
         tone = user_preferences.get("tone", "friendly")
         detail = user_preferences.get("detail", "concise")
@@ -68,19 +70,19 @@ def uiux_chat():
             "Provide actionable advice and include relevant examples where necessary."
         )
 
-        # Generate a response using OpenAI
-        completion = openai.ChatCompletion.create(
-            model="gpt-4o",
+        # Call the OpenAI API to generate a response
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
             messages=[{"role": "system", "content": system_message}] + conversation_history
         )
 
         # Extract the chatbot's response
-        chatbot_response = completion['choices'][0]['message']['content'].strip()
+        chatbot_response = response['choices'][0]['message']['content'].strip()
 
         # Add the chatbot's response to the conversation history
         conversation_history.append({"role": "assistant", "content": chatbot_response})
 
-        # Limit history size
+        # Limit history size to the last 20 interactions
         if len(conversation_history) > 20:
             conversation_history = conversation_history[-20:]
 
@@ -88,6 +90,12 @@ def uiux_chat():
 
     except openai.error.AuthenticationError:
         return jsonify({"error": "Invalid API key. Please check your configuration."}), 401
+
+    except openai.error.RateLimitError:
+        return jsonify({"error": "Rate limit exceeded. Please try again later."}), 429
+
+    except openai.error.OpenAIError as e:
+        return jsonify({"error": f"OpenAI API error: {str(e)}"}), 500
 
     except Exception as e:
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
