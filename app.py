@@ -3,7 +3,6 @@ import os
 import openai
 from flask import Flask, request, jsonify, render_template
 import json
-import time
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -11,8 +10,14 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__, template_folder="templates")
 
-# Set the OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Set the OpenAI API key from environment variables
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    print("Error: OPENAI_API_KEY environment variable is not set.")
+else:
+    print("OpenAI API key successfully loaded.")
+
+openai.api_key = api_key
 
 # Global variables
 user_preferences = {
@@ -29,15 +34,29 @@ conversation_history = [
 
 # Load external resources (design library, tutorials, etc.)
 def load_design_library():
-    with open("design_library/components.json") as f:
-        components = json.load(f)
-    with open("design_library/tutorials.json") as f:
-        tutorials = json.load(f)
-    with open("design_library/accessibility_guidelines.json") as f:
-        accessibility = json.load(f)
-    with open("design_library/analytics_insights.json") as f:
-        analytics = json.load(f)
-    return {"components": components, "tutorials": tutorials, "accessibility": accessibility, "analytics": analytics}
+    try:
+        with open("design_library/components.json") as f:
+            components = json.load(f)
+        with open("design_library/tutorials.json") as f:
+            tutorials = json.load(f)
+        with open("design_library/accessibility_guidelines.json") as f:
+            accessibility = json.load(f)
+        with open("design_library/analytics_insights.json") as f:
+            analytics = json.load(f)
+        return {
+            "components": components,
+            "tutorials": tutorials,
+            "accessibility": accessibility,
+            "analytics": analytics,
+        }
+    except Exception as e:
+        print(f"Error loading design library: {e}")
+        return {
+            "components": [],
+            "tutorials": [],
+            "accessibility": [],
+            "analytics": [],
+        }
 
 design_library = load_design_library()
 
@@ -94,7 +113,10 @@ def uiux_chat():
     except openai.error.RateLimitError:
         return jsonify({"error": "Rate limit exceeded. Please try again later."}), 429
 
-    except openai.error.OpenAIError as e:
+    except openai.error.InvalidRequestError as e:
+        return jsonify({"error": f"Invalid request: {str(e)}"}), 400
+
+    except openai.error.APIError as e:
         return jsonify({"error": f"OpenAI API error: {str(e)}"}), 500
 
     except Exception as e:
