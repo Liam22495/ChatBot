@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import os
 import openai
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import time
 import json
 
@@ -9,7 +9,7 @@ import json
 load_dotenv()
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates")
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -40,22 +40,10 @@ def load_design_library():
 
 design_library = load_design_library()
 
-# Default root route
+# Default route to serve the frontend
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({
-        "message": "Welcome to Partner In Design chatbot!",
-        "endpoints": {
-            "/chat/uiux": "Post your UI/UX-related queries.",
-            "/chat/preferences": "Set chatbot preferences.",
-            "/chat/clear": "Clear conversation history.",
-            "/design/components": "Get interactive UI components.",
-            "/design/tutorials": "Access design tutorials.",
-            "/design/accessibility": "Get accessibility guidelines.",
-            "/design/analytics": "Fetch analytics insights.",
-            "/chat/info": "Get information about this chatbot."
-        }
-    })
+    return render_template("index.html")
 
 # Chat endpoint for general UI/UX queries
 @app.route("/chat/uiux", methods=["POST"])
