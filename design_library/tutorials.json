@@ -1,0 +1,29 @@
+{
+    "tutorials": [
+        {
+            "title": "Getting Started with Figma",
+            "description": "A beginner's guide to using Figma for UI/UX design.",
+            "link": "https://www.figma.com/resources/getting-started"
+        },
+        {
+            "title": "Responsive Web Design Best Practices",
+            "description": "Learn how to create responsive web designs effectively.",
+            "link": "https://www.example.com/responsive-web-design"
+        },
+        {
+            "title": "Designing Accessible Interfaces",
+            "description": "A guide to making your designs more inclusive and accessible.",
+            "link": "https://www.w3.org/WAI/design-principles/"
+        },
+        {
+            "title": "Creating Interactive Prototypes in Adobe XD",
+            "description": "A tutorial on building interactive prototypes.",
+            "link": "https://www.adobe.com/xd/tutorials.html"
+        },
+        {
+            "title": "Optimizing User Flows",
+            "description": "Learn how to create and optimize user flows for better UX.",
+            "link": "https://www.example.com/user-flows"
+        }
+    ]
+}

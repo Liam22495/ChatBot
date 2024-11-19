@@ -1,0 +1,29 @@
+{
+    "components": [
+        {
+            "name": "Primary Button",
+            "description": "A standard button for primary actions.",
+            "code": "<button class='btn-primary'>Click Me</button>"
+        },
+        {
+            "name": "Secondary Button",
+            "description": "A button for secondary or cancel actions.",
+            "code": "<button class='btn-secondary'>Cancel</button>"
+        },
+        {
+            "name": "Responsive Navbar",
+            "description": "A responsive navigation bar for web applications.",
+            "code": "<nav class='navbar'>...</nav>"
+        },
+        {
+            "name": "Card Component",
+            "description": "A card layout for displaying content snippets.",
+            "code": "<div class='card'><h3>Card Title</h3><p>Card content...</p></div>"
+        },
+        {
+            "name": "Modal Window",
+            "description": "A popup modal for user interactions.",
+            "code": "<div class='modal'>...</div>"
+        }
+    ]
+}

@@ -1,0 +1,29 @@
+{
+    "guidelines": [
+        {
+            "title": "WCAG 2.1 Checklist",
+            "description": "A comprehensive checklist for meeting WCAG 2.1 standards.",
+            "link": "https://www.w3.org/WAI/WCAG21/checklist/"
+        },
+        {
+            "title": "Color Contrast Checker",
+            "description": "A tool to ensure your text has sufficient contrast.",
+            "link": "https://webaim.org/resources/contrastchecker/"
+        },
+        {
+            "title": "Keyboard Navigation Best Practices",
+            "description": "Tips for ensuring your design is accessible via keyboard.",
+            "link": "https://www.example.com/keyboard-navigation"
+        },
+        {
+            "title": "Accessible Forms",
+            "description": "Guidelines for creating accessible form inputs.",
+            "link": "https://www.w3.org/WAI/tutorials/forms/"
+        },
+        {
+            "title": "ARIA Roles Explained",
+            "description": "Learn how to use ARIA roles effectively.",
+            "link": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles"
+        }
+    ]
+}

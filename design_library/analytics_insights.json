@@ -1,0 +1,34 @@
+{
+    "insights": [
+        {
+            "title": "Heatmap Analysis Tips",
+            "description": "Understand user behavior using heatmaps.",
+            "recommendation": "Focus on areas with high click activity to optimize CTAs.",
+            "link": "https://www.hotjar.com/heatmaps/"
+        },
+        {
+            "title": "Session Replay Insights",
+            "description": "Analyze session recordings to improve user flows.",
+            "recommendation": "Identify points of user frustration or drop-off.",
+            "link": "https://www.crazyegg.com/session-recordings/"
+        },
+        {
+            "title": "A/B Testing Strategies",
+            "description": "Learn how to implement and analyze A/B tests.",
+            "recommendation": "Run tests on headlines, button placements, and images.",
+            "link": "https://www.optimizely.com/ab-testing/"
+        },
+        {
+            "title": "User Journey Mapping",
+            "description": "Visualize and optimize user journeys.",
+            "recommendation": "Identify critical touchpoints and remove friction.",
+            "link": "https://www.example.com/user-journeys"
+        },
+        {
+            "title": "Conversion Rate Optimization",
+            "description": "Tips to improve your website's conversion rate.",
+            "recommendation": "Simplify forms, improve load times, and optimize CTAs.",
+            "link": "https://www.example.com/conversion-optimization"
+        }
+    ]
+}
