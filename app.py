@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 import os
-import openai
 from flask import Flask, request, jsonify, render_template
 import json
 
@@ -10,16 +9,14 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__, template_folder="templates")
 
-# Set the OpenAI API key from environment variables
+# Check for OpenAI API key in environment variables
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     print("Error: OPENAI_API_KEY environment variable is not set.")
 else:
     print("OpenAI API key successfully loaded.")
 
-openai.api_key = api_key
-
-# Global variables
+# Example global settings
 user_preferences = {
     "tone": "friendly",
     "detail": "concise",
@@ -32,7 +29,7 @@ conversation_history = [
     )}
 ]
 
-# Load external resources (design library, tutorials, etc.)
+# Placeholder for external resources
 def load_design_library():
     try:
         with open("design_library/components.json") as f:
@@ -65,13 +62,12 @@ design_library = load_design_library()
 def home():
     return render_template("index.html")
 
-# Chat endpoint for general UI/UX queries
+# Chat endpoint
 @app.route("/chat/uiux", methods=["POST"])
 def uiux_chat():
     global conversation_history
 
     try:
-        # Get the user's message from the request
         user_message = request.json.get("message", "").strip()
         tone = user_preferences.get("tone", "friendly")
         detail = user_preferences.get("detail", "concise")
@@ -82,47 +78,38 @@ def uiux_chat():
         # Add the user's message to the conversation history
         conversation_history.append({"role": "user", "content": user_message})
 
-        # Customize system message based on user preferences
+        # Customize system message
         system_message = (
             "You are an expert UI/UX assistant. "
             f"Respond with a {tone} tone and {detail} level of detail. "
             "Provide actionable advice and include relevant examples where necessary."
         )
 
-        # Call the OpenAI API to generate a response
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # Updated to use gpt-3.5-turbo
-            messages=[{"role": "system", "content": system_message}] + conversation_history
-        )
+        # Generate response from model (adjust for OpenAI API or local model)
+        try:
+            import openai
+            openai.api_key = api_key
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",  # Use appropriate model
+                messages=[{"role": "system", "content": system_message}] + conversation_history
+            )
+            chatbot_response = response['choices'][0]['message']['content'].strip()
+        except ImportError:
+            chatbot_response = "Error: OpenAI module not available. Please configure your environment correctly."
 
-        # Extract the chatbot's response
-        chatbot_response = response['choices'][0]['message']['content'].strip()
-
-        # Add the chatbot's response to the conversation history
+        # Append response to history
         conversation_history.append({"role": "assistant", "content": chatbot_response})
 
-        # Limit history size to the last 20 interactions
+        # Limit history
         if len(conversation_history) > 20:
             conversation_history = conversation_history[-20:]
 
         return jsonify({"response": chatbot_response})
 
-    except openai.error.AuthenticationError:
-        return jsonify({"error": "Invalid API key. Please check your configuration."}), 401
-
-    except openai.error.RateLimitError:
-        return jsonify({"error": "Rate limit exceeded. Please try again later."}), 429
-
-    except openai.error.InvalidRequestError as e:
-        return jsonify({"error": f"Invalid request: {str(e)}"}), 400
-
-    except openai.error.APIError as e:
-        return jsonify({"error": f"OpenAI API error: {str(e)}"}), 500
-
     except Exception as e:
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
-# Endpoint for setting user preferences
+# Preferences endpoint
 @app.route("/chat/preferences", methods=["POST"])
 def set_preferences():
     global user_preferences
@@ -146,27 +133,23 @@ def clear_conversation():
     ]
     return jsonify({"message": "Conversation history cleared."})
 
-# Fetch design components
+# Resource endpoints
 @app.route("/design/components", methods=["GET"])
 def get_components():
     return jsonify({"components": design_library["components"]})
 
-# Fetch tutorials
 @app.route("/design/tutorials", methods=["GET"])
 def get_tutorials():
     return jsonify({"tutorials": design_library["tutorials"]})
 
-# Fetch accessibility guidelines
 @app.route("/design/accessibility", methods=["GET"])
 def get_accessibility_guidelines():
     return jsonify({"accessibility_guidelines": design_library["accessibility"]})
 
-# Fetch analytics insights
 @app.route("/design/analytics", methods=["GET"])
 def get_analytics_insights():
     return jsonify({"analytics_insights": design_library["analytics"]})
 
-# Creator and Purpose Responses
 @app.route("/chat/info", methods=["GET"])
 def bot_info():
     return jsonify({
