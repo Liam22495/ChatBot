@@ -21,16 +21,17 @@ try:
     model_name = "meta-llama/Llama-2-13b-hf"  # Adjust the path to your pre-downloaded model
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=hf_token)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    logging.info(f"Using device: {device}")
-
+    # Automatic device allocation
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype="auto",
-        device_map="auto",
+        torch_dtype="float16" if torch.cuda.is_available() else "float32",  # Use half-precision on GPU
+        device_map="auto",  # Automatically split layers between GPU and CPU
+        offload_folder="./offload",  # Disk storage for unused layers
         use_auth_token=hf_token
     )
 
+    # Debug: Check how layers are allocated
+    logging.info(f"Device map: {model.hf_device_map}")
     logging.info("Llama 2 model loaded successfully!")
 except Exception as e:
     logging.error(f"Error loading model: {e}")
@@ -46,20 +47,32 @@ conversation_history = [
 ]
 
 # Truncate input to avoid exceeding model limits
-def truncate_input(prompt, max_length=1024):
+def truncate_input(prompt, max_length=512):  # Adjust max_length for Llama-2-13b
     tokens = tokenizer(prompt, return_tensors="pt")["input_ids"]
     if tokens.size(1) > max_length:
-        return tokenizer.decode(tokens[0, -max_length:], skip_special_tokens=True)
+        truncated = tokenizer.decode(tokens[0, -max_length:], skip_special_tokens=True)
+        logging.warning(f"Input truncated to: {truncated}")
+        return truncated
     return prompt
 
 # Generate response using Llama 2
 def generate_response(prompt):
     try:
-        prompt = truncate_input(prompt)
-        inputs = tokenizer(prompt, return_tensors="pt").to(device)
-        outputs = model.generate(inputs["input_ids"], max_length=150, do_sample=True, temperature=0.7)
-        return tokenizer.decode(outputs[0], skip_special_tokens=True)
+        logging.info(f"Generating response for prompt: {prompt}")
+        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+        outputs = model.generate(
+            inputs["input_ids"],
+            max_length=150,  # Response length
+            do_sample=True,
+            temperature=0.7,
+            top_k=50,  # Add sampling parameters for creativity
+            top_p=0.95
+        )
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        logging.info(f"Generated response: {response}")
+        return response
     except torch.cuda.OutOfMemoryError:
+        logging.error("CUDA Out of Memory error.")
         return "Error: The model ran out of GPU memory. Try reducing the input size or using a smaller model."
     except Exception as e:
         logging.error(f"Error generating response: {e}")
@@ -78,6 +91,7 @@ def uiux_chat():
     try:
         user_message = request.json.get("message", "").strip()
         if not user_message:
+            logging.warning("Empty message received")
             return jsonify({"error": "Message cannot be empty"}), 400
 
         # Add user message to history
@@ -88,7 +102,9 @@ def uiux_chat():
             "You are an expert UI/UX assistant. "
             "Provide actionable advice and include relevant examples where necessary."
         )
-        prompt = f"{system_message}\n" + "\n".join([f"{h['role']}: {h['content']}" for h in conversation_history]) + "\nAssistant:"
+        prompt = f"{system_message}\n" + "\n".join(
+            [f"{h['role']}: {h['content']}" for h in conversation_history]
+        ) + "\nAssistant:"
 
         # Generate chatbot response
         chatbot_response = generate_response(prompt).strip()

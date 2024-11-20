@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Partner In Design Chatbot</title>
+    <title>Chatbot</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -98,16 +98,16 @@
 </head>
 <body>
     <div class="chat-container">
-        <div class="chat-header">Partner In Design Chatbot</div>
+        <div class="chat-header">Chatbot</div>
         <div class="chat-box" id="chat-box"></div>
         <div class="input-container">
-            <input type="text" id="user-input" placeholder="Type your message here..." />
+            <input type="text" id="user-input" placeholder="Type your message here..." onkeypress="handleKeyPress(event)" />
             <button onclick="sendMessage()">Send</button>
         </div>
     </div>
 
     <script>
-        const apiUrl = "https://chatbot-djdb.onrender.com/chat/uiux";
+        const apiUrl = "http://127.0.0.1:8000/chat/uiux"; // Local Flask server URL
 
         function addMessage(role, content, isLoading = false) {
             const chatBox = document.getElementById("chat-box");
@@ -129,7 +129,7 @@
             messageContainer.appendChild(messageText);
 
             chatBox.appendChild(messageContainer);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the latest message
 
             return messageText;
         }
@@ -142,8 +142,9 @@
             // Add user's message to the chat
             addMessage("user", message);
 
-            // Clear the input field
+            // Clear the input field and set focus back
             userInput.value = "";
+            userInput.focus();
 
             // Add a loading indicator for the bot
             const loadingMessage = addMessage("bot", "", true);
@@ -153,19 +154,35 @@
                 const response = await fetch(apiUrl, {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({ message })
+                    body: JSON.stringify({ message }),
                 });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.statusText}`);
+                }
 
                 const data = await response.json();
                 loadingMessage.innerText = data.response || `Error: ${data.error}`;
                 loadingMessage.classList.remove("loading");
             } catch (error) {
+                console.error("Error connecting to the chatbot:", error);
                 loadingMessage.innerText = "Error connecting to the chatbot. Please try again later.";
                 loadingMessage.classList.remove("loading");
             }
         }
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        }
+
+        // Display a welcome message when the page loads
+        document.addEventListener("DOMContentLoaded", () => {
+            addMessage("bot", "Welcome! How can I assist you with UI/UX design?");
+        });
     </script>
 </body>
 </html>
