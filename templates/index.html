@@ -53,10 +53,10 @@
             background-color: #ddd;
         }
         .avatar.user {
-            background-image: url('https://via.placeholder.com/40/007BFF/ffffff?text=U'); /* Placeholder user icon */
+            background-image: url('https://via.placeholder.com/40/007BFF/ffffff?text=U');
         }
         .avatar.bot {
-            background-image: url('https://via.placeholder.com/40/333333/ffffff?text=B'); /* Placeholder bot icon */
+            background-image: url('https://via.placeholder.com/40/333333/ffffff?text=B');
         }
         .message-text {
             max-width: 70%;
@@ -77,6 +77,10 @@
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
+        }
+        .input-container input:disabled {
+            background-color: #f0f0f0;
+            cursor: not-allowed;
         }
         .input-container button {
             padding: 10px 20px;
@@ -102,7 +106,7 @@
         <div class="chat-box" id="chat-box"></div>
         <div class="input-container">
             <input type="text" id="user-input" placeholder="Type your message here..." onkeypress="handleKeyPress(event)" />
-            <button onclick="sendMessage()">Send</button>
+            <button id="send-button" onclick="sendMessage()">Send</button>
         </div>
     </div>
 
@@ -136,21 +140,19 @@
 
         async function sendMessage() {
             const userInput = document.getElementById("user-input");
+            const sendButton = document.getElementById("send-button");
             const message = userInput.value.trim();
             if (!message) return;
 
-            // Add user's message to the chat
             addMessage("user", message);
 
-            // Clear the input field and set focus back
             userInput.value = "";
-            userInput.focus();
+            userInput.disabled = true;
+            sendButton.disabled = true;
 
-            // Add a loading indicator for the bot
             const loadingMessage = addMessage("bot", "", true);
 
             try {
-                // Send the message to the chatbot API
                 const response = await fetch(apiUrl, {
                     method: "POST",
                     headers: {
@@ -164,12 +166,15 @@
                 }
 
                 const data = await response.json();
-                loadingMessage.innerText = data.response || `Error: ${data.error}`;
-                loadingMessage.classList.remove("loading");
+                loadingMessage.innerText = data.response || "The bot could not generate a response.";
             } catch (error) {
                 console.error("Error connecting to the chatbot:", error);
-                loadingMessage.innerText = "Error connecting to the chatbot. Please try again later.";
+                loadingMessage.innerText = "Error: Unable to get a response. Try again later.";
+            } finally {
                 loadingMessage.classList.remove("loading");
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                userInput.focus();
             }
         }
 
@@ -179,7 +184,6 @@
             }
         }
 
-        // Display a welcome message when the page loads
         document.addEventListener("DOMContentLoaded", () => {
             addMessage("bot", "Welcome! How can I assist you with UI/UX design?");
         });

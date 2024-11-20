@@ -1,8 +1,12 @@
 from flask import Flask, request, jsonify, render_template
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
+from dotenv import load_dotenv
 import torch
 import logging
 import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__, template_folder="templates")
@@ -71,13 +75,19 @@ def generate_response(prompt):
     try:
         logging.info("Generating response...")
         inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-        outputs = model.generate(
-            inputs["input_ids"],
-            max_length=150,  # Response length
+        
+        # Set generation configuration
+        generation_config = GenerationConfig(
+            max_new_tokens=150,  # Limit response length
             do_sample=True,
             temperature=0.7,
-            top_k=50,  # Add sampling parameters for creativity
+            top_k=50,
             top_p=0.95
+        )
+
+        outputs = model.generate(
+            inputs["input_ids"],
+            generation_config=generation_config
         )
         response = tokenizer.decode(outputs[0], skip_special_tokens=True)
         logging.info(f"Response generated: {response}")
