@@ -3,6 +3,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 import json
 import logging
+import os
 
 # Initialize Flask app
 app = Flask(__name__, template_folder="templates")
@@ -10,10 +11,15 @@ app = Flask(__name__, template_folder="templates")
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
+# Load Hugging Face token from environment
+hf_token = os.getenv("HUGGINGFACE_TOKEN")
+if not hf_token:
+    raise ValueError("HUGGINGFACE_TOKEN environment variable is not set.")
+
 # Load Llama 2 model and tokenizer
 logging.info("Loading Llama 2 model...")
 model_name = "meta-llama/Llama-2-13b-hf"  # Use "meta-llama/Llama-2-7b-hf" for the smaller model
-tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=True)
+tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 logging.info(f"Using device: {device}")
@@ -22,7 +28,8 @@ model = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype="auto",
     device_map="auto",
-    offload_folder="./offload"  # Offload layers to CPU if needed
+    offload_folder="./offload",  # Offload layers to CPU if needed
+    token=hf_token
 )
 
 logging.info("Llama 2 model loaded successfully!")
