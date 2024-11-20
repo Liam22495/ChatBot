@@ -1,10 +1,8 @@
 from flask import Flask, request, jsonify, render_template
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
-import json
 import logging
 import os
-import subprocess
 
 # Initialize Flask app
 app = Flask(__name__, template_folder="templates")
@@ -17,26 +15,11 @@ hf_token = os.getenv("HUGGINGFACE_TOKEN")
 if not hf_token:
     raise ValueError("HUGGINGFACE_TOKEN environment variable is not set.")
 
-# Clone the GitHub repository for model weights
-weights_repo_url = "https://github.com/Liam22495/model_weights.git"
-weights_dir = "./model_weights"
-
-try:
-    if not os.path.exists(weights_dir):
-        logging.info("Cloning model weights repository...")
-        subprocess.run(["git", "clone", weights_repo_url, weights_dir], check=True)
-    else:
-        logging.info("Updating model weights repository...")
-        subprocess.run(["git", "-C", weights_dir, "pull"], check=True)
-except subprocess.CalledProcessError as e:
-    logging.error(f"Error managing the weights repository: {e}")
-    raise RuntimeError("Failed to clone or update the model weights repository.")
-
 # Load Llama 2 model and tokenizer
 try:
     logging.info("Loading Llama 2 model...")
-    model_name = os.path.join(weights_dir, "meta-llama/Llama-2-13b-hf")  # Adjust the path to your model weights
-    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
+    model_name = "meta-llama/Llama-2-13b-hf"  # Adjust the path to your pre-downloaded model
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=hf_token)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logging.info(f"Using device: {device}")
@@ -45,8 +28,7 @@ try:
         model_name,
         torch_dtype="auto",
         device_map="auto",
-        offload_folder="./offload",  # Offload layers to CPU if needed
-        token=hf_token
+        use_auth_token=hf_token
     )
 
     logging.info("Llama 2 model loaded successfully!")
@@ -55,10 +37,6 @@ except Exception as e:
     raise RuntimeError("Failed to load the Llama 2 model or tokenizer.")
 
 # Global variables
-user_preferences = {
-    "tone": "friendly",
-    "detail": "concise",
-}
 conversation_history = [
     {"role": "system", "content": (
         "You are an expert UI/UX design assistant. "
@@ -66,34 +44,6 @@ conversation_history = [
         "Use British English in responses, and focus on directly addressing the user's query."
     )}
 ]
-
-# Load external resources (design library, tutorials, etc.)
-def load_design_library():
-    try:
-        with open("design_library/components.json") as f:
-            components = json.load(f)
-        with open("design_library/tutorials.json") as f:
-            tutorials = json.load(f)
-        with open("design_library/accessibility_guidelines.json") as f:
-            accessibility = json.load(f)
-        with open("design_library/analytics_insights.json") as f:
-            analytics = json.load(f)
-        return {
-            "components": components,
-            "tutorials": tutorials,
-            "accessibility": accessibility,
-            "analytics": analytics,
-        }
-    except Exception as e:
-        logging.error(f"Error loading design library: {e}")
-        return {
-            "components": [],
-            "tutorials": [],
-            "accessibility": [],
-            "analytics": [],
-        }
-
-design_library = load_design_library()
 
 # Truncate input to avoid exceeding model limits
 def truncate_input(prompt, max_length=1024):
@@ -130,16 +80,12 @@ def uiux_chat():
         if not user_message:
             return jsonify({"error": "Message cannot be empty"}), 400
 
-        tone = user_preferences.get("tone", "friendly")
-        detail = user_preferences.get("detail", "concise")
-
         # Add user message to history
         conversation_history.append({"role": "user", "content": user_message})
 
         # Format system message and prompt
         system_message = (
             "You are an expert UI/UX assistant. "
-            f"Respond with a {tone} tone and {detail} level of detail. "
             "Provide actionable advice and include relevant examples where necessary."
         )
         prompt = f"{system_message}\n" + "\n".join([f"{h['role']}: {h['content']}" for h in conversation_history]) + "\nAssistant:"
@@ -158,65 +104,7 @@ def uiux_chat():
         logging.error(f"Error in chat endpoint: {e}")
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
-# Endpoint for setting user preferences
-@app.route("/chat/preferences", methods=["POST"])
-def set_preferences():
-    global user_preferences
-    tone = request.json.get("tone", user_preferences["tone"])
-    detail = request.json.get("detail", user_preferences["detail"])
-
-    user_preferences["tone"] = tone
-    user_preferences["detail"] = detail
-
-    return jsonify({"message": "Preferences updated.", "preferences": user_preferences})
-
-# Clear conversation history
-@app.route("/chat/clear", methods=["POST"])
-def clear_conversation():
-    global conversation_history
-    conversation_history = [
-        {"role": "system", "content": (
-            "You are an expert UI/UX design assistant. "
-            "Provide concise and professional advice on UI/UX design, Figma, Adobe XD, Sketch, and web development."
-        )}
-    ]
-    return jsonify({"message": "Conversation history cleared."})
-
-# Test endpoint for model
-@app.route("/chat/test", methods=["GET"])
-def test_chat():
-    try:
-        test_response = generate_response("Test message: What are the best practices in UI/UX design?")
-        return jsonify({"response": test_response})
-    except Exception as e:
-        logging.error(f"Error in test endpoint: {e}")
-        return jsonify({"error": f"Test failed: {str(e)}"}), 500
-
-# Resource endpoints
-@app.route("/design/components", methods=["GET"])
-def get_components():
-    return jsonify({"components": design_library["components"]})
-
-@app.route("/design/tutorials", methods=["GET"])
-def get_tutorials():
-    return jsonify({"tutorials": design_library["tutorials"]})
-
-@app.route("/design/accessibility", methods=["GET"])
-def get_accessibility_guidelines():
-    return jsonify({"accessibility_guidelines": design_library["accessibility"]})
-
-@app.route("/design/analytics", methods=["GET"])
-def get_analytics_insights():
-    return jsonify({"analytics_insights": design_library["analytics"]})
-
-@app.route("/chat/info", methods=["GET"])
-def bot_info():
-    return jsonify({
-        "creator": "Liam Bonello from 6.2A Multi-Media",
-        "purpose": "To improve the quality and efficiency of UI/UX and development."
-    })
-
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))
+    port = 8000  # Fixed port for local usage
     logging.info(f"Running on port: {port}")
-    app.run(debug=True, host="0.0.0.0", port=port)
+    app.run(debug=True, host="127.0.0.1", port=port, use_reloader=False)
