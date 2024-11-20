@@ -19,7 +19,7 @@ if not hf_token:
 try:
     logging.info("Loading Llama 2 model...")
     model_name = "meta-llama/Llama-2-13b-hf"  # Adjust the path to your pre-downloaded model
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=hf_token)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
 
     # Automatic device allocation
     model = AutoModelForCausalLM.from_pretrained(
@@ -27,7 +27,7 @@ try:
         torch_dtype="float16" if torch.cuda.is_available() else "float32",  # Use half-precision on GPU
         device_map="auto",  # Automatically split layers between GPU and CPU
         offload_folder="./offload",  # Disk storage for unused layers
-        use_auth_token=hf_token
+        token=hf_token
     )
 
     # Debug: Check how layers are allocated
