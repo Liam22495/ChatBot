@@ -21,30 +21,38 @@ if not hf_token:
 weights_repo_url = "https://github.com/Liam22495/model_weights.git"
 weights_dir = "./model_weights"
 
-if not os.path.exists(weights_dir):
-    logging.info("Cloning model weights repository...")
-    subprocess.run(["git", "clone", weights_repo_url, weights_dir], check=True)
-else:
-    logging.info("Updating model weights repository...")
-    subprocess.run(["git", "-C", weights_dir, "pull"], check=True)
+try:
+    if not os.path.exists(weights_dir):
+        logging.info("Cloning model weights repository...")
+        subprocess.run(["git", "clone", weights_repo_url, weights_dir], check=True)
+    else:
+        logging.info("Updating model weights repository...")
+        subprocess.run(["git", "-C", weights_dir, "pull"], check=True)
+except subprocess.CalledProcessError as e:
+    logging.error(f"Error managing the weights repository: {e}")
+    raise RuntimeError("Failed to clone or update the model weights repository.")
 
 # Load Llama 2 model and tokenizer
-logging.info("Loading Llama 2 model...")
-model_name = os.path.join(weights_dir, "meta-llama/Llama-2-13b-hf")  # Adjust the path to your model weights
-tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
+try:
+    logging.info("Loading Llama 2 model...")
+    model_name = os.path.join(weights_dir, "meta-llama/Llama-2-13b-hf")  # Adjust the path to your model weights
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-logging.info(f"Using device: {device}")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    logging.info(f"Using device: {device}")
 
-model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    torch_dtype="auto",
-    device_map="auto",
-    offload_folder="./offload",  # Offload layers to CPU if needed
-    token=hf_token
-)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype="auto",
+        device_map="auto",
+        offload_folder="./offload",  # Offload layers to CPU if needed
+        token=hf_token
+    )
 
-logging.info("Llama 2 model loaded successfully!")
+    logging.info("Llama 2 model loaded successfully!")
+except Exception as e:
+    logging.error(f"Error loading model: {e}")
+    raise RuntimeError("Failed to load the Llama 2 model or tokenizer.")
 
 # Global variables
 user_preferences = {
@@ -104,6 +112,7 @@ def generate_response(prompt):
     except torch.cuda.OutOfMemoryError:
         return "Error: The model ran out of GPU memory. Try reducing the input size or using a smaller model."
     except Exception as e:
+        logging.error(f"Error generating response: {e}")
         return f"Error generating response: {str(e)}"
 
 # Default route to serve the frontend
@@ -146,6 +155,7 @@ def uiux_chat():
         return jsonify({"response": chatbot_response})
 
     except Exception as e:
+        logging.error(f"Error in chat endpoint: {e}")
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
 # Endpoint for setting user preferences
@@ -179,6 +189,7 @@ def test_chat():
         test_response = generate_response("Test message: What are the best practices in UI/UX design?")
         return jsonify({"response": test_response})
     except Exception as e:
+        logging.error(f"Error in test endpoint: {e}")
         return jsonify({"error": f"Test failed: {str(e)}"}), 500
 
 # Resource endpoints
@@ -206,6 +217,6 @@ def bot_info():
     })
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 10000))
-    print(f"Running on port: {port}")
+    port = int(os.getenv("PORT", 8000))
+    logging.info(f"Running on port: {port}")
     app.run(debug=True, host="0.0.0.0", port=port)
