@@ -194,6 +194,6 @@ def bot_info():
     })
 
 if __name__ == "__main__":
-    # Use PORT from environment or default to 10000
-    port = int(os.getenv("PORT", 10000))
+    port = int(os.getenv("PORT", 8080))
+    print(f"Starting Flask app on port {port}...")
     app.run(debug=True, host="0.0.0.0", port=port)
